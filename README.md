@@ -241,9 +241,7 @@ hand_exo/
 @inproceedings{sasmitha2025hand_exo,
   author    = {S. Sasmitha},
   title     = {Development of an Intelligent Sorting Game with Real-Time
-               Hand Gesture Control and {MySQL} Performance Analytics},
-  booktitle = {IEEE Conference},
-  year      = {2025}
+               Hand Gesture Control and {MySQL} Performance Analytics}
 }
 ```
 
