@@ -184,9 +184,7 @@ Tests cover gesture classification, AABB collision, scoring logic, adaptive feed
 |-------|--------|-------------|
 | 0 | Thumb  | 3  |
 | 1 | Index  | 5  |
-| 2 | Middle | 6  |
-| 3 | Ring   | 9  |
-| 4 | Pinky  | 10 |
+| 2 | Middle | 5 |
 
 Serial protocol: 9600 baud, newline-terminated.
 Commands: `S<angle>`, `O` (open), `C` (close), `E` (emergency stop), `H` (heartbeat), `R` (read angles).
