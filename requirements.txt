@@ -1,0 +1,26 @@
+# hand_exo — S. Sasmitha
+# Exact versions from paper implementation details (Section IV-A)
+
+# Core vision & game
+opencv-python==4.5.5.64
+mediapipe==0.8.9
+pygame==2.1.3
+
+# Scientific computing
+numpy>=1.21.0
+scipy>=1.7.0
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# Database
+mysql-connector-python==8.0.28
+
+# Voice recognition (offline)
+vosk==0.3.32
+sounddevice>=0.4.4
+
+# Arduino serial
+pyserial==3.5
+
+# PDF report generation (built into matplotlib)
+# pdf output uses matplotlib.backends.backend_pdf — no extra dep needed

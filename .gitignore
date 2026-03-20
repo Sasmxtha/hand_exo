@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Calibration (generated at runtime)
+calibration_matrix.npy
+
+# Vosk model (downloaded by setup.sh)
+vosk-model-*/
+
+# Generated outputs
+reports/*.pdf
+emg_output.png
+gesture_evaluation_report.json
+*.pyc
+
+# Secrets / credentials — NEVER commit
+.env
+db_config.py
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test cache
+.pytest_cache/
+coverage.xml

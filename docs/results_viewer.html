@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Hand Rehabilitation System — Results Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg:        #0b0f1a;
+    --surface:   #111827;
+    --surface2:  #1a2235;
+    --border:    #1e2d45;
+    --accent:    #38bdf8;
+    --accent2:   #34d399;
+    --accent3:   #fb923c;
+    --accent4:   #a78bfa;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --red:       #f87171;
+    --radius:    14px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 5% 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #0d1b2e 0%, #0b0f1a 60%);
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse 600px 300px at 20% 50%, rgba(56,189,248,.06), transparent);
+    pointer-events:none;
+  }
+  .header-tag {
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 14px; opacity: .8;
+  }
+  h1 {
+    font-size: clamp(1.4rem, 3.5vw, 2.4rem);
+    font-weight: 700; line-height: 1.2;
+    max-width: 720px;
+  }
+  h1 span { color: var(--accent); }
+  .author-line {
+    margin-top: 12px; font-size: 13px; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Nav tabs ── */
+  nav {
+    display: flex; gap: 4px;
+    padding: 18px 5% 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display:none; }
+  .tab {
+    padding: 10px 22px; border-radius: 8px 8px 0 0;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: 1px solid transparent; border-bottom: none;
+    transition: all .2s; white-space: nowrap;
+    background: transparent; color: var(--muted);
+    letter-spacing: .4px;
+  }
+  .tab:hover  { color: var(--text); background: var(--surface2); }
+  .tab.active {
+    background: var(--surface); color: var(--accent);
+    border-color: var(--border);
+  }
+
+  /* ── Content ── */
+  main { padding: 36px 5% 60px; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* ── KPI row ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 36px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 20px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .kpi-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background: var(--kpi-color, var(--accent));
+  }
+  .kpi-val {
+    font-size: 2.2rem; font-weight: 700;
+    color: var(--kpi-color, var(--accent));
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
+  }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ── Section headings ── */
+  .section-title {
+    font-size: 18px; font-weight: 700; margin-bottom: 20px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+  }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  @media(max-width:900px){ .grid-2,.grid-3{ grid-template-columns:1fr; } }
+
+  /* ── Chart cards ── */
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+  }
+  .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 18px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  .chart-wrap { position: relative; height: 260px; }
+
+  /* ── Table ── */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .data-table th {
+    text-align: left; padding: 12px 16px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+  .data-table td { padding: 13px 16px; border-bottom: 1px solid var(--border); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--surface2); }
+  .data-table .bold-row td { font-weight: 700; color: var(--accent); background: rgba(56,189,248,.04); }
+
+  .badge {
+    display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px;
+    font-weight:600; font-family:'JetBrains Mono',monospace;
+  }
+  .badge-green  { background:rgba(52,211,153,.15); color:var(--accent2); }
+  .badge-blue   { background:rgba(56,189,248,.15);  color:var(--accent); }
+  .badge-orange { background:rgba(251,146,60,.15);  color:var(--accent3); }
+  .badge-red    { background:rgba(248,113,113,.15); color:var(--red); }
+
+  /* ── Confusion matrix ── */
+  .cm-grid {
+    display: grid; grid-template-columns: auto 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 6px; max-width: 380px; margin: 0 auto;
+  }
+  .cm-header { font-size: 11px; text-align:center; padding: 8px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .cm-label  { font-size: 12px; display:flex; align-items:center; justify-content:flex-end; padding-right:12px; color:var(--muted); }
+  .cm-cell {
+    border-radius: 10px; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding: 22px 16px; font-family:'JetBrains Mono',monospace;
+    transition: transform .2s;
+  }
+  .cm-cell:hover { transform: scale(1.04); }
+  .cm-cell .cm-num { font-size: 2.4rem; font-weight:700; line-height:1; }
+  .cm-cell .cm-pct { font-size: 12px; margin-top: 4px; opacity: .7; }
+  .cm-tp { background: rgba(56,189,248,.18);  color: var(--accent); }
+  .cm-tn { background: rgba(52,211,153,.18);  color: var(--accent2); }
+  .cm-fp { background: rgba(248,113,113,.08); color: var(--red); }
+  .cm-fn { background: rgba(248,113,113,.08); color: var(--red); }
+
+  /* ── System diagram ── */
+  .pipeline {
+    display:flex; gap:0; align-items:stretch;
+    overflow-x:auto; padding-bottom:8px;
+  }
+  .pipe-stage {
+    flex:1; min-width:160px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius:0; padding: 20px 16px;
+    position:relative;
+  }
+  .pipe-stage:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+  .pipe-stage:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+  .pipe-stage::after {
+    content:'›'; position:absolute; right:-14px; top:50%;
+    transform:translateY(-50%); font-size:24px; color:var(--accent);
+    z-index:2; background:var(--bg); padding:0 2px;
+  }
+  .pipe-stage:last-child::after { display:none; }
+  .pipe-label { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent); margin-bottom:10px; font-weight:700; }
+  .pipe-item  { font-size:12px; color:var(--muted); margin-bottom:5px; padding-left:10px; position:relative; }
+  .pipe-item::before { content:'·'; position:absolute; left:0; color:var(--accent2); }
+
+  /* ── Latency bar chart ── */
+  .latency-row { display:flex; flex-direction:column; gap:10px; }
+  .lat-item { display:flex; align-items:center; gap:14px; }
+  .lat-label { width:170px; font-size:13px; color:var(--muted); flex-shrink:0; }
+  .lat-bar-wrap { flex:1; background:var(--surface2); border-radius:6px; height:32px; overflow:hidden; }
+  .lat-bar {
+    height:100%; border-radius:6px; display:flex; align-items:center;
+    padding-left:12px; font-size:12px; font-weight:600;
+    font-family:'JetBrains Mono',monospace;
+    transition: width 1.2s cubic-bezier(.4,0,.2,1);
+  }
+  .lat-total .lat-bar { background: linear-gradient(90deg, rgba(56,189,248,.35), rgba(56,189,248,.15)); color:var(--accent); }
+
+  /* ── Screenshot gallery ── */
+  .gallery { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:20px; }
+  .gallery-item {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+    transition:transform .2s, border-color .2s;
+  }
+  .gallery-item:hover { transform:translateY(-4px); border-color:var(--accent); }
+  .gallery-img {
+    width:100%; aspect-ratio:16/9; object-fit:cover;
+    display:block; background:var(--surface2);
+  }
+  .gallery-cap { padding:14px 16px; }
+  .gallery-cap strong { font-size:14px; display:block; margin-bottom:4px; }
+  .gallery-cap span   { font-size:12px; color:var(--muted); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-tag">IEEE Conference Paper · 2025</div>
+  <h1>Intelligent Sorting Game with <span>Real-Time Hand Gesture Control</span> & MySQL Analytics</h1>
+  <div class="author-line">S. Sasmitha · Amrita School of Artificial Intelligence, Coimbatore · Amrita Vishwa Vidyapeetham</div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('gesture')">Gesture Recognition</div>
+  <div class="tab" onclick="showTab('performance')">Player Performance</div>
+  <div class="tab" onclick="showTab('latency')">System Latency</div>
+  <div class="tab" onclick="showTab('emg')">EMG Analysis</div>
+  <div class="tab" onclick="showTab('architecture')">Architecture</div>
+  <div class="tab" onclick="showTab('gallery')">Screenshots</div>
+</nav>
+
+<main>
+
+<!-- ══ OVERVIEW ══════════════════════════════════════════════════════════════ -->
+<div class="panel active" id="panel-overview">
+  <div class="kpi-row">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <div class="kpi-val">92.85%</div>
+      <div class="kpi-label">Gesture Recognition F1</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent2)">
+      <div class="kpi-val">95.8%</div>
+      <div class="kpi-label">Object Tracking Coverage</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent3)">
+      <div class="kpi-val">92ms</div>
+      <div class="kpi-label">End-to-End Latency</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent4)">
+      <div class="kpi-val">86.5%</div>
+      <div class="kpi-label">Mean Player Accuracy</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--red)">
+      <div class="kpi-val">12.4N</div>
+      <div class="kpi-label">Peak Grip Force</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#e879f9">
+      <div class="kpi-val">3×</div>
+      <div class="kpi-label">Voluntary / Actuated RMS Ratio</div>
+    </div>
+  </div>
+
+  <div class="section-title"><div class="dot"></div>System Description</div>
+  <div class="grid-2" style="margin-bottom:32px">
+    <div class="chart-card">
+      <h3>Input Modes</h3>
+      <div style="display:flex;flex-direction:column;gap:16px;padding-top:8px">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="color:var(--accent);font-weight:700;margin-bottom:6px">👁 VISION Mode</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">Contactless MediaPipe Hands tracking via Microsoft LifeCam. 21 3D landmarks → OPEN / CLOSED classification at 30 FPS.</div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="color:var(--accent2);font-weight:700;margin-bottom:6px">🤖 GLOVE Mode</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">Arduino Uno + 5× MG996R servos + tendon-driven fingers. Haptic augmentation with watchdog safety and emergency stop.</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Technology Stack</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding-top:8px">
+        <span class="badge badge-blue">Python 3.9</span>
+        <span class="badge badge-blue">MediaPipe 0.8.9</span>
+        <span class="badge badge-blue">OpenCV 4.5.5</span>
+        <span class="badge badge-green">PyGame 2.1.3</span>
+        <span class="badge badge-green">MySQL 8.0</span>
+        <span class="badge badge-orange">Vosk 0.3.32</span>
+        <span class="badge badge-orange">PySerial 3.5</span>
+        <span class="badge badge-orange">Arduino Uno</span>
+        <span class="badge" style="background:rgba(167,139,250,.15);color:var(--accent4)">5× MG996R Servo</span>
+        <span class="badge" style="background:rgba(167,139,250,.15);color:var(--accent4)">8-ch sEMG</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GESTURE ═══════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-gesture">
+  <div class="kpi-row">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <div class="kpi-val">93.5%</div><div class="kpi-label">Open Hand F1</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent2)">
+      <div class="kpi-val">92.3%</div><div class="kpi-label">Closed Hand F1</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent3)">
+      <div class="kpi-val">2,000</div><div class="kpi-label">Frames Evaluated</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent4)">
+      <div class="kpi-val">4</div><div class="kpi-label">Participants</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Precision · Recall · F1 — Table I</h3>
+      <div class="chart-wrap"><canvas id="chartGestureBar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Confusion Matrix (per 100 samples)</h3>
+      <div style="padding-top:12px">
+        <div style="text-align:center;font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Predicted →</div>
+        <div class="cm-grid">
+          <div></div>
+          <div class="cm-header">Open</div>
+          <div class="cm-header">Closed</div>
+          <div class="cm-label">Open</div>
+          <div class="cm-cell cm-tn"><span class="cm-num">93</span><span class="cm-pct">93%</span></div>
+          <div class="cm-cell cm-fp"><span class="cm-num">7</span><span class="cm-pct">7%</span></div>
+          <div class="cm-label">Closed</div>
+          <div class="cm-cell cm-fn"><span class="cm-num">5</span><span class="cm-pct">5%</span></div>
+          <div class="cm-cell cm-tp"><span class="cm-num">95</span><span class="cm-pct">95%</span></div>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:16px">
+          <span style="color:var(--accent2);margin-right:16px">■ Correct</span>
+          <span style="color:var(--red)">■ Misclassified</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PERFORMANCE ════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-performance">
+  <div class="section-title"><div class="dot"></div>Object Collection Performance (Table III)</div>
+  <div class="chart-card" style="margin-bottom:24px">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Participant</th><th>Avg Accuracy</th><th>Total Collected</th>
+          <th>Total Missed</th><th>Tier</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Player 1</td>
+          <td><span class="badge badge-green">91.5%</span></td>
+          <td>32</td><td>3</td>
+          <td><span class="badge badge-green">Advanced</span></td>
+        </tr>
+        <tr>
+          <td>Player 2</td>
+          <td><span class="badge badge-green">90.3%</span></td>
+          <td>31</td><td>3</td>
+          <td><span class="badge badge-green">Advanced</span></td>
+        </tr>
+        <tr>
+          <td>Player 3</td>
+          <td><span class="badge badge-orange">74.8%</span></td>
+          <td>24</td><td>8</td>
+          <td><span class="badge badge-orange">Intermediate</span></td>
+        </tr>
+        <tr>
+          <td>Player 4</td>
+          <td><span class="badge badge-green">89.3%</span></td>
+          <td>33</td><td>4</td>
+          <td><span class="badge badge-green">Advanced</span></td>
+        </tr>
+        <tr class="bold-row">
+          <td>Overall</td>
+          <td>86.5%</td><td>120</td><td>18</td><td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Accuracy per Player</h3>
+      <div class="chart-wrap"><canvas id="chartAccuracy"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Collected vs Missed</h3>
+      <div class="chart-wrap"><canvas id="chartCollected"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LATENCY ════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-latency">
+  <div class="kpi-row">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <div class="kpi-val">16.7ms</div><div class="kpi-label">Camera Capture</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent3)">
+      <div class="kpi-val">41.3ms</div><div class="kpi-label">Gesture Recognition</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent2)">
+      <div class="kpi-val">25.8ms</div><div class="kpi-label">Object Tracking</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent4)">
+      <div class="kpi-val">8.2ms</div><div class="kpi-label">Game Logic</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Component Latency Breakdown</h3>
+      <div class="latency-row" style="margin-top:8px" id="latencyBars"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Latency Distribution (Mean ± SD)</h3>
+      <div class="chart-wrap"><canvas id="chartLatency"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EMG ════════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-emg">
+  <div class="kpi-row">
+    <div class="kpi-card" style="--kpi-color:var(--accent)">
+      <div class="kpi-val">~3×</div><div class="kpi-label">Voluntary / Actuated RMS</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent2)">
+      <div class="kpi-val">8 ch</div><div class="kpi-label">Differential Electrodes</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:var(--accent3)">
+      <div class="kpi-val">↓ Muscle Effort</div><div class="kpi-label">During Assisted Movement</div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-bottom:24px">
+    <h3>Normalised EMG Amplitude — Voluntary vs Motor-Actuated</h3>
+    <div class="chart-wrap" style="height:320px"><canvas id="chartEMG"></canvas></div>
+  </div>
+
+  <div class="chart-card">
+    <h3>RMS Amplitude Comparison per Muscle Group</h3>
+    <div class="chart-wrap"><canvas id="chartEMGRMS"></canvas></div>
+  </div>
+</div>
+
+<!-- ══ ARCHITECTURE ═══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-architecture">
+  <div class="section-title"><div class="dot"></div>System Pipeline</div>
+  <div class="pipeline" style="margin-bottom:32px">
+    <div class="pipe-stage">
+      <div class="pipe-label">Input</div>
+      <div class="pipe-item">Camera 0 (Logitech C920)</div>
+      <div class="pipe-item">Camera 1 (MS LifeCam)</div>
+      <div class="pipe-item">Vosk ASR (offline)</div>
+      <div class="pipe-item">Arduino Glove Serial</div>
+    </div>
+    <div class="pipe-stage">
+      <div class="pipe-label">Processing</div>
+      <div class="pipe-item">MediaPipe 21-landmark</div>
+      <div class="pipe-item">CSRT Object Tracker</div>
+      <div class="pipe-item">Perspective Transform</div>
+      <div class="pipe-item">AABB Collision</div>
+    </div>
+    <div class="pipe-stage">
+      <div class="pipe-label">Game Engine</div>
+      <div class="pipe-item">PyGame @ 60 FPS</div>
+      <div class="pipe-item">State Machine</div>
+      <div class="pipe-item">Adaptive Difficulty</div>
+      <div class="pipe-item">Multimodal Feedback</div>
+    </div>
+    <div class="pipe-stage">
+      <div class="pipe-label">Actuation</div>
+      <div class="pipe-item">5× MG996R Servos</div>
+      <div class="pipe-item">Tendon-driven Fingers</div>
+      <div class="pipe-item">Watchdog Safety</div>
+      <div class="pipe-item">Emergency Stop</div>
+    </div>
+    <div class="pipe-stage">
+      <div class="pipe-label">Analytics</div>
+      <div class="pipe-item">MySQL Database</div>
+      <div class="pipe-item">Session Tracking</div>
+      <div class="pipe-item">Adaptive Feedback</div>
+      <div class="pipe-item">Progress Reports</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="chart-card">
+      <h3>Servo Performance</h3>
+      <div class="chart-wrap"><canvas id="chartServo"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Adaptive Feedback Tiers</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;padding-top:12px">
+        <div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:10px;padding:16px">
+          <div style="color:var(--red);font-weight:700;font-size:13px;margin-bottom:4px">🔴 Beginner  — Accuracy &lt; 50%</div>
+          <div style="font-size:12px;color:var(--muted)">Focus on basic timing and hand positioning</div>
+        </div>
+        <div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:16px">
+          <div style="color:var(--accent3);font-weight:700;font-size:13px;margin-bottom:4px">🟠 Intermediate  — Accuracy 50–75%</div>
+          <div style="font-size:12px;color:var(--muted)">Work on speed and pick-up/drop consistency</div>
+        </div>
+        <div style="background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:16px">
+          <div style="color:var(--accent2);font-weight:700;font-size:13px;margin-bottom:4px">🟢 Advanced  — Accuracy &gt; 75%</div>
+          <div style="font-size:12px;color:var(--muted)">Focus on efficiency, precision, and gesture-timing synchronisation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GALLERY ════════════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-gallery">
+  <div class="section-title"><div class="dot"></div>Paper Screenshots</div>
+  <div class="gallery">
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/game_interface.png" alt="Game Interface" onerror="this.style.background='#1a2235';this.alt='Game Interface — Score:20, Lives:1, Input:CAMERA'"/>
+      <div class="gallery-cap">
+        <strong>Game Interface</strong>
+        <span>PyGame sorting game in VISION mode — score, lives, hand state, dual camera feeds</span>
+      </div>
+    </div>
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/glove.png" alt="Robotic Glove" onerror="this.style.background='#1a2235'"/>
+      <div class="gallery-cap">
+        <strong>Robotic Glove</strong>
+        <span>5× MG996R servos, tendon-driven actuation, Arduino Uno controller</span>
+      </div>
+    </div>
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/exp_setup.png" alt="EMG Setup" onerror="this.style.background:'#1a2235'"/>
+      <div class="gallery-cap">
+        <strong>Experimental Setup</strong>
+        <span>8 differential sEMG electrodes on forearm, multi-channel DAQ system</span>
+      </div>
+    </div>
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/emgn.png" alt="EMG Signals" onerror="this.style.background:'#1a2235'"/>
+      <div class="gallery-cap">
+        <strong>EMG Signal Comparison</strong>
+        <span>Voluntary (top) vs motor-actuated (bottom) — amplitude × time</span>
+      </div>
+    </div>
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/confusion.png" alt="Confusion Matrix" onerror="this.style.background:'#1a2235'"/>
+      <div class="gallery-cap">
+        <strong>Gesture Recognition Confusion Matrix</strong>
+        <span>Open: 93% correct · Closed: 95% correct · Overall F1: 92.85%</span>
+      </div>
+    </div>
+    <div class="gallery-item">
+      <img class="gallery-img" src="assets/screenshots/dashboard_sample.png" alt="Analytics Dashboard" onerror="this.style.background:'#1a2235'"/>
+      <div class="gallery-cap">
+        <strong>Analytics Dashboard</strong>
+        <span>Per-player progress charts, KPI cards, confusion matrix</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-' + id).classList.add('active');
+  renderCharts();
+}
+
+// ── Chart defaults ────────────────────────────────────────────────────────
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+
+const rendered = {};
+function once(key, fn) { if (!rendered[key]) { fn(); rendered[key] = true; } }
+
+function renderCharts() {
+
+  // Gesture bar chart
+  once('gesture', () => {
+    new Chart(document.getElementById('chartGestureBar'), {
+      type: 'bar',
+      data: {
+        labels: ['Open Hand', 'Closed Hand', 'Overall'],
+        datasets: [
+          { label: 'Precision', data: [94.2, 91.5, 92.85], backgroundColor: 'rgba(56,189,248,.7)', borderRadius: 6 },
+          { label: 'Recall',    data: [92.8, 93.1, 92.95], backgroundColor: 'rgba(52,211,153,.7)', borderRadius: 6 },
+          { label: 'F1-Score',  data: [93.5, 92.3, 92.85], backgroundColor: 'rgba(251,146,60,.7)',  borderRadius: 6 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y: { min: 88, max: 96, ticks: { callback: v => v + '%' } }
+        }
+      }
+    });
+  });
+
+  // Accuracy per player
+  once('accuracy', () => {
+    new Chart(document.getElementById('chartAccuracy'), {
+      type: 'bar',
+      data: {
+        labels: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+        datasets: [{
+          label: 'Accuracy (%)',
+          data: [91.5, 90.3, 74.8, 89.3],
+          backgroundColor: [
+            'rgba(52,211,153,.75)', 'rgba(52,211,153,.75)',
+            'rgba(251,146,60,.75)', 'rgba(52,211,153,.75)'
+          ],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 60, max: 100, ticks: { callback: v => v + '%' } }
+        }
+      }
+    });
+  });
+
+  // Collected vs Missed
+  once('collected', () => {
+    new Chart(document.getElementById('chartCollected'), {
+      type: 'bar',
+      data: {
+        labels: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
+        datasets: [
+          { label: 'Collected', data: [32,31,24,33], backgroundColor: 'rgba(52,211,153,.7)', borderRadius: 6 },
+          { label: 'Missed',    data: [3, 3, 8, 4],  backgroundColor: 'rgba(248,113,113,.7)', borderRadius: 6 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { x: { stacked: false }, y: { stacked: false } }
+      }
+    });
+  });
+
+  // Latency bar (visual)
+  once('latbars', () => {
+    const items = [
+      { label: 'Camera Capture',     val: 16.7, sd: 2.1,  color: 'rgba(56,189,248,.5)',  max: 92 },
+      { label: 'Gesture Recognition',val: 41.3, sd: 5.2,  color: 'rgba(251,146,60,.5)',  max: 92 },
+      { label: 'Object Tracking',    val: 25.8, sd: 3.6,  color: 'rgba(52,211,153,.5)',  max: 92 },
+      { label: 'Game Logic',         val: 8.2,  sd: 1.4,  color: 'rgba(167,139,250,.5)', max: 92 },
+      { label: 'Total System',       val: 92.0, sd: 9.1,  color: 'rgba(56,189,248,.3)',  max: 92, total: true },
+    ];
+    const container = document.getElementById('latencyBars');
+    items.forEach(it => {
+      const pct = (it.val / 110 * 100).toFixed(1);
+      container.innerHTML += `
+        <div class="lat-item ${it.total ? 'lat-total' : ''}">
+          <div class="lat-label">${it.label}</div>
+          <div class="lat-bar-wrap">
+            <div class="lat-bar" style="width:${pct}%;background:${it.color};color:${it.total ? 'var(--accent)' : 'var(--text)'}">
+              ${it.val} ± ${it.sd} ms
+            </div>
+          </div>
+        </div>`;
+    });
+  });
+
+  // Latency chart
+  once('latency', () => {
+    new Chart(document.getElementById('chartLatency'), {
+      type: 'bar',
+      data: {
+        labels: ['Camera', 'Gesture', 'Tracking', 'Logic', 'Total'],
+        datasets: [{
+          label: 'Mean (ms)',
+          data: [16.7, 41.3, 25.8, 8.2, 92.0],
+          backgroundColor: [
+            'rgba(56,189,248,.7)', 'rgba(251,146,60,.7)',
+            'rgba(52,211,153,.7)', 'rgba(167,139,250,.7)',
+            'rgba(56,189,248,.35)'
+          ],
+          borderRadius: 8,
+          error: [2.1, 5.2, 3.6, 1.4, 9.1]
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: v => v + 'ms' } } }
+      }
+    });
+  });
+
+  // EMG comparison
+  once('emg', () => {
+    const n = 200;
+    const t = Array.from({length: n}, (_, i) => (i / n * 17).toFixed(2));
+    const vol = Array.from({length: n}, (_, i) => {
+      const base = Math.sin(i * 0.3) * 0.08 + (Math.random() - .5) * 0.18;
+      return parseFloat(base.toFixed(4));
+    });
+    const act = Array.from({length: n}, () => {
+      return parseFloat(((Math.random() - .5) * 0.06).toFixed(4));
+    });
+    new Chart(document.getElementById('chartEMG'), {
+      type: 'line',
+      data: {
+        labels: t,
+        datasets: [
+          { label: 'Voluntary', data: vol, borderColor: 'rgba(52,211,153,.8)',  backgroundColor: 'transparent', borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+          { label: 'Actuated',  data: act, borderColor: 'rgba(56,189,248,.8)',  backgroundColor: 'transparent', borderWidth: 1.2, pointRadius: 0, tension: 0.3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { x: { ticks: { maxTicksLimit: 10, callback: v => v + 's' } }, y: { ticks: { callback: v => v.toFixed(2) } } },
+        animation: { duration: 600 }
+      }
+    });
+  });
+
+  // EMG RMS
+  once('emgrms', () => {
+    const muscles = ['Brachioradialis', 'Ext. Carpi Ulnaris', 'Biceps Tendon', 'Flex. Digitorum'];
+    new Chart(document.getElementById('chartEMGRMS'), {
+      type: 'bar',
+      data: {
+        labels: muscles,
+        datasets: [
+          { label: 'Voluntary RMS',   data: [0.12, 0.10, 0.24, 0.11], backgroundColor: 'rgba(52,211,153,.7)',  borderRadius: 8 },
+          { label: 'Actuated RMS',    data: [0.04, 0.035, 0.08, 0.038], backgroundColor: 'rgba(56,189,248,.5)', borderRadius: 8 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { ticks: { callback: v => v.toFixed(3) } } }
+      }
+    });
+  });
+
+  // Servo performance
+  once('servo', () => {
+    const angles = [0,10,20,30,40,50,60,70,80,90];
+    const flex   = [0, 8,17,25,33,41,50,58,66,75];
+    const force  = [0,1.2,2.5,3.8,5.2,6.8,8.5,10.2,11.6,12.4];
+    new Chart(document.getElementById('chartServo'), {
+      type: 'line',
+      data: {
+        labels: angles.map(a => a + '°'),
+        datasets: [
+          { label: 'Flexion Angle (°)', data: flex,  borderColor: 'rgba(56,189,248,.9)', yAxisID:'y', borderWidth:2, pointRadius:4, tension:0.4, fill:false },
+          { label: 'Grip Force (N)',    data: force, borderColor: 'rgba(251,146,60,.9)', yAxisID:'y2', borderWidth:2, pointRadius:4, tension:0.4, fill:false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y:  { type:'linear', position:'left',  title:{display:true,text:'Flexion (°)'} },
+          y2: { type:'linear', position:'right', title:{display:true,text:'Force (N)'}, grid:{drawOnChartArea:false} }
+        }
+      }
+    });
+  });
+}
+
+// Render on load
+renderCharts();
+</script>
+</body>
+</html>
