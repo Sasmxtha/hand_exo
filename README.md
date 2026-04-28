@@ -6,9 +6,7 @@
 ![Arduino](https://img.shields.io/badge/arduino-Uno-teal)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> **Author:** S. Sasmitha  
 > **Affiliation:** Amrita School of Artificial Intelligence, Coimbatore · Amrita Vishwa Vidyapeetham, India  
-> **Paper:** *Development of an Intelligent Sorting Game with Real-Time Hand Gesture Control and MySQL Performance Analytics* — IEEE Conference, 2025
 
 ---
 
@@ -233,18 +231,5 @@ hand_exo/
 
 ---
 
-## Citation
 
-```bibtex
-@inproceedings{sasmitha2025hand_exo,
-  author    = {S. Sasmitha},
-  title     = {Development of an Intelligent Sorting Game with Real-Time
-               Hand Gesture Control and {MySQL} Performance Analytics}
-}
-```
 
----
-
-## License
-
-MIT License — Copyright (c) 2025 S. Sasmitha · Amrita School of AI, Coimbatore
